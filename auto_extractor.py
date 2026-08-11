@@ -110,9 +110,16 @@ def extract_auto_dataset(
 # ─── LLM Callers ─────────────────────────────────────────────────────────────
 
 def _call_gemini(prompt: str, api_key: str, model: str) -> str:
-    """Call Google Gemini via the google-genai SDK and return raw text."""
+    """
+    Call Google Gemini with multi-layered fallback strategy:
+      1. SDK call with JSON mode
+      2. SDK call without JSON mode (plain text)
+      3. Direct REST HTTP call via urllib
+    """
     from google import genai
     from google.genai import types as genai_types
+    import urllib.request
+    import json
 
     clean_key = api_key.strip()
 
@@ -128,7 +135,6 @@ def _call_gemini(prompt: str, api_key: str, model: str) -> str:
             "Please enter a valid Gemini API key from Google AI Studio."
         )
 
-    # Build de-duplicated model list
     candidates = _build_model_candidates(model, [
         "gemini-2.0-flash",
         "gemini-2.5-flash",
@@ -138,20 +144,17 @@ def _call_gemini(prompt: str, api_key: str, model: str) -> str:
         "gemini-1.5-pro",
     ])
 
-    # Try both v1beta and v1 API versions across all candidate models
-    api_versions = ["v1beta", "v1"]
     last_error: Optional[Exception] = None
 
-    for api_ver in api_versions:
-        try:
-            client = genai.Client(
-                api_key=clean_key,
-                http_options={"api_version": api_ver},
-            )
-        except Exception:
-            client = genai.Client(api_key=clean_key)
+    # ── Attempt 1 & 2: SDK with and without response_mime_type ───────────────
+    try:
+        client = genai.Client(api_key=clean_key)
+    except Exception:
+        client = None
 
+    if client is not None:
         for candidate in candidates:
+            # 1A. Try with JSON mime type
             try:
                 response = client.models.generate_content(
                     model=candidate,
@@ -162,14 +165,56 @@ def _call_gemini(prompt: str, api_key: str, model: str) -> str:
                         response_mime_type="application/json",
                     ),
                 )
-                return response.text.strip()
+                if response and response.text:
+                    return response.text.strip()
             except Exception as exc:
-                err_str = str(exc)
-                if "404" in err_str or "NOT_FOUND" in err_str:
-                    last_error = exc
-                    continue
-                # For non-404 errors (e.g. quota 429 or auth 401), raise immediately
-                raise
+                last_error = exc
+
+            # 1B. Try without JSON mime type (plain text mode)
+            try:
+                response = client.models.generate_content(
+                    model=candidate,
+                    contents=prompt,
+                    config=genai_types.GenerateContentConfig(
+                        temperature=0.1,
+                        max_output_tokens=8192,
+                    ),
+                )
+                if response and response.text:
+                    return response.text.strip()
+            except Exception as exc:
+                last_error = exc
+
+    # ── Attempt 3: Direct REST HTTP Call (guaranteed fallback) ───────────────
+    for candidate in candidates:
+        for api_ver in ["v1beta", "v1"]:
+            url = f"https://generativelanguage.googleapis.com/{api_ver}/models/{candidate}:generateContent?key={clean_key}"
+            payload = json.dumps({
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "maxOutputTokens": 8192
+                }
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    candidates_res = data.get("candidates", [])
+                    if candidates_res:
+                        parts = candidates_res[0].get("content", {}).get("parts", [])
+                        if parts:
+                            return parts[0].get("text", "").strip()
+            except Exception as exc:
+                last_error = exc
+                continue
 
     if last_error:
         raise last_error
