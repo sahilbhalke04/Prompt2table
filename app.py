@@ -286,10 +286,10 @@ with st.sidebar:
         model_options = ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"]
     else:
         model_options = [
-            "gemini-2.0-flash",       # Default
-            "gemini-2.0-flash-lite",  # Lighter / faster
-            "gemini-1.5-flash",       # Legacy (may 404 for newer keys)
-            "gemini-1.5-pro",         # Higher quality
+            "gemini-3.6-flash",       # ✅ Active default model
+            "gemini-flash-latest",    # ✅ Active alias
+            "gemini-3.5-flash",       # ✅ Active model
+            "gemini-pro-latest",      # ✅ Active high-quality model
         ]
 
     selected_model = st.selectbox(
