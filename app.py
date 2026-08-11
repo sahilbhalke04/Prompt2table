@@ -560,12 +560,11 @@ if convert_clicked:
         elif "404" in error_str or "NOT_FOUND" in error_str:
             st.markdown(
                 '<div class="error-box">'
-                "🔑 <strong>Model Not Found (404)</strong><br><br>"
-                "The selected model is not available for your API key. Try:<br>"
-                "• Select a different model in the sidebar<br>"
-                '• Restrict your key to <strong>Generative Language API</strong> in '
-                '<a href="https://console.cloud.google.com/apis/credentials" '
-                'target="_blank" style="color:#f59e0b;">Google Cloud Console</a>'
+                "🔑 <strong>API Key / Model Error (404)</strong><br><br>"
+                "The API endpoint returned 404. Try:<br>"
+                "• Double-check your API key in the sidebar<br>"
+                '• Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#f59e0b;">aistudio.google.com</a><br>'
+                "• Switch provider to 🟢 OpenAI if you have an OpenAI key"
                 "</div>",
                 unsafe_allow_html=True,
             )
