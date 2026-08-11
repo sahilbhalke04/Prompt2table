@@ -1,0 +1,16 @@
+# ─── Text-to-Dataset Converter ────────────────────────────────────────────────
+# Shared dependencies (both Person A and Person B)
+
+# UI
+streamlit>=1.35.0
+
+# LLM Providers
+google-genai>=1.0.0        # Google Gemini (new SDK)
+openai>=1.30.0             # OpenAI GPT models
+
+# Data Handling
+pandas>=2.0.0
+pydantic>=2.0.0
+
+# Environment
+python-dotenv>=1.0.0
