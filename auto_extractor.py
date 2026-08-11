@@ -114,39 +114,63 @@ def _call_gemini(prompt: str, api_key: str, model: str) -> str:
     from google import genai
     from google.genai import types as genai_types
 
-    client = genai.Client(api_key=api_key.strip())
+    clean_key = api_key.strip()
 
-    # Model fallback list — tries the selected model first, then alternatives.
+    # Key format validation
+    if clean_key.startswith("sk-"):
+        raise ValueError(
+            "You pasted an OpenAI API key (starts with 'sk-') into the Gemini key field. "
+            "Please switch the provider in the sidebar to '🟢 OpenAI (GPT)'."
+        )
+    if clean_key.startswith("tvly-"):
+        raise ValueError(
+            "You pasted a Tavily web search key into the Gemini key field. "
+            "Please enter a valid Gemini API key from Google AI Studio."
+        )
+
+    # Build de-duplicated model list
     candidates = _build_model_candidates(model, [
         "gemini-2.0-flash",
+        "gemini-2.5-flash",
         "gemini-2.0-flash-lite",
         "gemini-1.5-flash",
+        "gemini-1.5-flash-8b",
         "gemini-1.5-pro",
     ])
 
+    # Try both v1beta and v1 API versions across all candidate models
+    api_versions = ["v1beta", "v1"]
     last_error: Optional[Exception] = None
-    for candidate in candidates:
-        try:
-            response = client.models.generate_content(
-                model=candidate,
-                contents=prompt,
-                config=genai_types.GenerateContentConfig(
-                    temperature=0.1,
-                    max_output_tokens=8192,
-                    response_mime_type="application/json",
-                ),
-            )
-            return response.text.strip()
-        except Exception as exc:
-            err_str = str(exc)
-            # 404 = model not found → try next candidate
-            if "404" in err_str or "NOT_FOUND" in err_str:
-                last_error = exc
-                continue
-            # Any other error → bubble up immediately
-            raise
 
-    # All candidates failed with 404
+    for api_ver in api_versions:
+        try:
+            client = genai.Client(
+                api_key=clean_key,
+                http_options={"api_version": api_ver},
+            )
+        except Exception:
+            client = genai.Client(api_key=clean_key)
+
+        for candidate in candidates:
+            try:
+                response = client.models.generate_content(
+                    model=candidate,
+                    contents=prompt,
+                    config=genai_types.GenerateContentConfig(
+                        temperature=0.1,
+                        max_output_tokens=8192,
+                        response_mime_type="application/json",
+                    ),
+                )
+                return response.text.strip()
+            except Exception as exc:
+                err_str = str(exc)
+                if "404" in err_str or "NOT_FOUND" in err_str:
+                    last_error = exc
+                    continue
+                # For non-404 errors (e.g. quota 429 or auth 401), raise immediately
+                raise
+
     if last_error:
         raise last_error
     return "{}"
