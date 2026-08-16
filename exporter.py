@@ -42,6 +42,8 @@ def json_to_dataframe(raw_data: list[dict], expected_columns: list[str] = None) 
             if col not in df.columns:
                 df[col] = None
         df = df[expected_columns]
+    if not df.empty and len(df.columns) > 0:
+        df = df.drop_duplicates(subset=[df.columns[0]], keep="first").reset_index(drop=True)
     return df.fillna("—")
 
 

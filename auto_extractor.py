@@ -25,26 +25,28 @@ import pandas as pd
 
 _EXTRACTION_PROMPT = """\
 You are a precise data-extraction engine.
-Your task is to read unstructured text and pull out EVERY structured record
+Your task is to read unstructured text and pull out EVERY structured entity/record
 into a clean JSON format.
 
 INSTRUCTIONS
 1. Read the text carefully.
-2. Identify what kind of data records are described
-   (products, people, statistics, rankings, etc.).
-3. Determine the most appropriate column names from the attributes
-   mentioned in the text.  Use clean, human-readable Title Case names.
-4. Extract EVERY record — do not skip any.
+2. Extract EXACTLY ONE record per unique entity/product/subject described in the text.
+   - Do NOT miss any distinct entity (e.g. if 6 smartphones are described, return exactly 6 records).
+   - Do NOT create duplicate rows for the same entity.
+3. Determine the most appropriate column names from the attributes mentioned in the text.
+   - The first column MUST be the Entity/Product/Subject Name (e.g., "Model Name" or "Phone" or "Product").
+   - Use clean, human-readable Title Case column names.
+4. Extract every record — do not skip any.
 5. For any attribute that is missing for a particular record, use null.
-6. Numeric values must be numbers (int or float), NOT strings.
-   Monetary values may remain as formatted strings (e.g. "$3.9 million").
+6. Numeric values must be numbers (int or float) where clear.
+   Monetary and formatted values may remain as strings (e.g. "$1,299", "6.9-inch").
 
 OUTPUT FORMAT  (return ONLY this JSON — nothing else)
 {{
-  "columns": ["Column1", "Column2", "Column3"],
+  "columns": ["Product Name", "Display", "Processor", "Price"],
   "records": [
-    {{"Column1": "value1", "Column2": 123, "Column3": null}},
-    {{"Column1": "value2", "Column2": 456, "Column3": "abc"}}
+    {{"Product Name": "Samsung Galaxy S26 Ultra", "Display": "6.9-inch", "Processor": "Snapdragon 8 Elite", "Price": "$1,299"}},
+    {{"Product Name": "Apple iPhone 17 Pro Max", "Display": "6.9-inch", "Processor": "A19 Pro", "Price": "$1,199"}}
   ]
 }}
 
@@ -66,7 +68,7 @@ def extract_auto_dataset(
     raw_text: str,
     api_key: str,
     provider: str = "gemini",
-    model: str = "gemini-2.0-flash",
+    model: str = "gemini-3.6-flash",
 ) -> pd.DataFrame:
     """
     Auto-detect schema from raw text and extract structured records.
@@ -80,13 +82,12 @@ def extract_auto_dataset(
     provider : str
         ``"gemini"`` or ``"openai"``.
     model : str
-        The model identifier (e.g. ``"gemini-2.0-flash"``, ``"gpt-4o-mini"``).
+        The model identifier.
 
     Returns
     -------
     pd.DataFrame
         A DataFrame with the auto-detected columns and extracted records.
-        Returns an empty DataFrame if no data could be extracted.
     """
     if not raw_text or not raw_text.strip():
         return pd.DataFrame()
@@ -104,7 +105,12 @@ def extract_auto_dataset(
     if not records:
         return pd.DataFrame()
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+    # Deduplicate by primary entity column if present
+    if not df.empty and len(df.columns) > 0:
+        df = df.drop_duplicates(subset=[df.columns[0]], keep="first").reset_index(drop=True)
+
+    return df
 
 
 # ─── LLM Callers ─────────────────────────────────────────────────────────────

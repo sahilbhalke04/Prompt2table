@@ -61,9 +61,11 @@ def extract_custom_dataset(
     DatasetSchema = create_model("DatasetSchema", items=(List[DynamicRowModel], ...))
 
     # 2. Build prompt
-    prompt = f"""Extract all entity records matching these exact target fields: {', '.join(col_list)}.
+    prompt = f"""Extract EXACTLY ONE record per unique entity/subject mentioned in the text matching these target fields: {', '.join(col_list)}.
+Do NOT omit any distinct entity and do NOT create duplicate records for the same entity.
 If a specific column value is missing for an entry in the text, return null.
 Format your output as a JSON object with a single key "items" containing a list of the extracted records.
+
 Raw Text:
 {raw_text}"""
 
@@ -78,7 +80,11 @@ Raw Text:
     if not records:
         return pd.DataFrame()
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+    if not df.empty and len(df.columns) > 0:
+        df = df.drop_duplicates(subset=[df.columns[0]], keep="first").reset_index(drop=True)
+
+    return df
 
 
 # ─── LLM Callers ─────────────────────────────────────────────────────────────
