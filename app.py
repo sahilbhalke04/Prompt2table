@@ -412,6 +412,15 @@ if "Custom" in mode:
 
 st.markdown("")  # spacing
 
+dataset_action = st.radio(
+    "Dataset Action",
+    ["🔄 Replace Dataset (Fresh)", "➕ Append to Existing Dataset"],
+    index=0,
+    horizontal=True,
+    key="dataset_action_radio",
+    help="Choose whether to start a fresh dataset or append newly extracted rows to the current table."
+)
+
 convert_clicked = st.button(
     "🚀 Convert to Dataset",
     type="primary",
@@ -488,15 +497,15 @@ if convert_clicked:
         progress_bar.progress(100, text="Done!")
         status.empty()
 
-        # ── Append to master dataset ──────────────────────────────────────
+        # ── Store / Append to master dataset ──────────────────────────────
         if new_df is not None and not new_df.empty:
-            if st.session_state.master_df.empty:
+            if "Replace" in dataset_action or st.session_state.master_df.empty:
                 st.session_state.master_df = new_df
             else:
                 st.session_state.master_df = pd.concat(
                     [st.session_state.master_df, new_df],
                     ignore_index=True,
-                ).fillna("—")
+                ).fillna("—").drop_duplicates(ignore_index=True)
 
             st.session_state.run_count += 1
 
