@@ -55,7 +55,18 @@ def fill_missing_values(df: pd.DataFrame, api_key: str) -> pd.DataFrame:
 
     # 5. Update original dataset with enriched values
     filled_data = json.loads(response.text)
+    if isinstance(filled_data, dict):
+        # Unwrap if LLM returned {"items": [...]} or similar
+        for v in filled_data.values():
+            if isinstance(v, list):
+                filled_data = v
+                break
+
     filled_df = pd.DataFrame(filled_data)
+
+    # Align indices so update() overwrites the correct missing rows
+    missing_indices = df_working[missing_rows_mask].index
+    filled_df.index = missing_indices[:len(filled_df)]
 
     df_working.update(filled_df)
     
