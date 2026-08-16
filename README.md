@@ -62,8 +62,10 @@ This project solves that friction point by providing an end-to-end extraction pi
                  │   & CSV / JSON Exporters  │
                  └───────────────────────────┘
 ```
-📁 Repository Structure
-Plaintext
+
+## 📁 Repository Structure
+
+```text
 text_to_dataset/
 │
 ├── auto_extractor.py      # Backend engine for dynamic schema inference
@@ -72,7 +74,7 @@ text_to_dataset/
 ├── app.py                 # Streamlit web application & user interface
 ├── requirements.txt       # Project dependencies
 └── .gitignore             # Ignored local files, environments, and secrets
-
+```
 🛠️ Tech Stack
 Language: Python 3.10+
 
@@ -84,25 +86,30 @@ AI & LLM Providers: Google GenAI SDK, OpenAI API
 
 🚀 Getting Started
 1. Prerequisites
-2. Python 3.10 or higher installed
-3. An active API key from Google AI Studio or OpenAI.
-4. Clone the Repository:
-   Bashgit clone [https://github.com/sahilbhalke04/text-to-dataset-converter.git](https://github.com/sahilbhalke04/text-to-dataset-converter.git)
-   cd text-to-dataset-converter
-5. Set Up a Virtual Environment
-   Bash# Create virtual environment
-   python -m venv .venv
+Python 3.10 or higher installed.
+
+An active API key from Google AI Studio or OpenAI.
+
+2. Clone the Repository
+git clone [https://github.com/sahilbhalke04/text-to-dataset-converter.git](https://github.com/sahilbhalke04/text-to-dataset-converter.git)
+cd text-to-dataset-converter
+
+3. Set Up a Virtual Environment
+# Create virtual environment
+python -m venv .venv
 
 # Activate on Windows:
 .venv\Scripts\activate
 
 # Activate on macOS/Linux:
 source .venv/bin/activate
-4. Install DependenciesBashpip install -r requirements.txt
-5. Launch the ApplicationBashstreamlit run app.py
 
-💡 Example UsageInput (Raw Conversational Text)"The Tesla Model S Plaid comes with a range of 396 miles, costs roughly $89,990, and hits 0-60 mph in 1.99 seconds. Meanwhile, the Lucid Air Grand Touring offers 516 miles of range, retails for $109,900, and does 0-60 in about 3.0 seconds."Output (Extracted Tabular DataFrame)model_namerange_milesprice_usdzero_to_sixty_secTesla Model S Plaid396899901.99Lucid Air Grand Touring5161099003.0
+4. Install Dependencies
+pip install -r requirements.txt
+
+5. Launch the application
+streamlit run app.py
 
 👥 Contributors
-Sahil Bhalke - Core Architecture, Schema Inference Engine & UI Integration Project 
-Manasi Ghadge - Custom Column Logic, Data Sanitization & Export Utilities
+Sahil Bhalke — Core Architecture, Schema Inference Engine & UI Integration
+Manasi Ghadge — Custom Column Logic, Data Sanitization & Export Utilities
