@@ -82,10 +82,16 @@ Data Processing & Validation: Pandas, Pydantic
 
 AI & LLM Providers: Google GenAI SDK, OpenAI API
 
-🚀 Getting Started1. PrerequisitesPython 3.10 or higher installed.An active API key from Google AI Studio or OpenAI.2. Clone the RepositoryBashgit clone [https://github.com/sahilbhalke04/text-to-dataset-converter.git](https://github.com/sahilbhalke04/text-to-dataset-converter.git)
-cd text-to-dataset-converter
-3. Set Up a Virtual EnvironmentBash# Create virtual environment
-python -m venv .venv
+🚀 Getting Started
+1. Prerequisites
+2. Python 3.10 or higher installed
+3. An active API key from Google AI Studio or OpenAI.
+4. Clone the Repository:
+   Bashgit clone [https://github.com/sahilbhalke04/text-to-dataset-converter.git](https://github.com/sahilbhalke04/text-to-dataset-converter.git)
+   cd text-to-dataset-converter
+5. Set Up a Virtual Environment
+   Bash# Create virtual environment
+   python -m venv .venv
 
 # Activate on Windows:
 .venv\Scripts\activate
@@ -94,6 +100,8 @@ python -m venv .venv
 source .venv/bin/activate
 4. Install DependenciesBashpip install -r requirements.txt
 5. Launch the ApplicationBashstreamlit run app.py
+
+💡 Example UsageInput (Raw Conversational Text)"The Tesla Model S Plaid comes with a range of 396 miles, costs roughly $89,990, and hits 0-60 mph in 1.99 seconds. Meanwhile, the Lucid Air Grand Touring offers 516 miles of range, retails for $109,900, and does 0-60 in about 3.0 seconds."Output (Extracted Tabular DataFrame)model_namerange_milesprice_usdzero_to_sixty_secTesla Model S Plaid396899901.99Lucid Air Grand Touring5161099003.0
 
 👥 Contributors
 Sahil Bhalke - Core Architecture, Schema Inference Engine & UI Integration Project 
