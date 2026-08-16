@@ -127,9 +127,14 @@ Return ONLY a valid JSON array of objects containing the filled records."""
 
         target_idx = None
 
-        # Tier 1: exact __row_index__
-        if "__row_index__" in record and record["__row_index__"] in missing_indices:
-            target_idx = record["__row_index__"]
+        # Tier 1: exact __row_index__ (cast to int — Gemini may return "2" instead of 2)
+        if "__row_index__" in record:
+            try:
+                row_idx = int(record["__row_index__"])
+                if row_idx in missing_indices:
+                    target_idx = row_idx
+            except (ValueError, TypeError):
+                pass
 
         # Tier 2: __entity_name__
         if target_idx is None and "__entity_name__" in record and record["__entity_name__"]:
