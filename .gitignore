@@ -1,3 +1,18 @@
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment & API Keys
+.env
+
+# Streamlit config / cache
+.streamlit/
+
 __pycache__/
 *.pyc
 *.pyo
