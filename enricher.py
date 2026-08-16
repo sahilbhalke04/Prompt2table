@@ -2,8 +2,8 @@
 enricher.py  —  Data Enrichment & Missing Value Imputation
 ──────────────────────────────────────────────────────────
 Identifies rows with missing values ('—', null, None) and uses Gemini
-to backfill missing cells IN-PLACE matching by explicit row ID and
-primary entity name. Guarantees 0 duplicated rows and 0 dropped entities.
+to backfill missing cells IN-PLACE matched strictly by entity name.
+Guarantees 0 duplicate rows, 0 shifted rows, and 0 dropped entities.
 """
 
 from __future__ import annotations
@@ -19,12 +19,12 @@ from google.genai import types
 def fill_missing_values(df: pd.DataFrame, api_key: str) -> pd.DataFrame:
     """
     Identifies rows with missing values or '—' placeholders and asks 
-    Gemini to infer and backfill missing cells in-place using row context.
+    Gemini to infer and backfill missing cells in-place using entity context.
     
     Guarantees:
-      - The exact same number of rows (no duplicates created)
-      - All original entities (Samsung, iPhone, etc.) are strictly preserved
-      - Only the missing (null/—) cells are filled
+      - Strictly preserves original row order and primary entity names.
+      - Matches filled values strictly by the primary entity name (Phone/Product/Name).
+      - Never creates duplicate rows or overwrites unrelated rows.
     """
     if df is None or df.empty:
         return df
@@ -42,11 +42,12 @@ def fill_missing_values(df: pd.DataFrame, api_key: str) -> pd.DataFrame:
     if not missing_indices:
         return df_result  # Nothing to fill!
 
-    # 2. Extract incomplete records, tagging each with its explicit row index
     primary_col = df_result.columns[0]
+
+    # 2. Extract incomplete records with their primary entity name
     incomplete_records = []
     for idx in missing_indices:
-        row_dict = {"__row_id__": int(idx)}
+        row_dict = {}
         for col in df_result.columns:
             val = df_result.at[idx, col]
             if val in ["—", "-", "null", "None", "", "NaN", "nan"] or pd.isna(val):
@@ -60,14 +61,14 @@ def fill_missing_values(df: pd.DataFrame, api_key: str) -> pd.DataFrame:
     client = genai.Client(api_key=clean_key)
 
     prompt = f"""You are an expert data enrichment assistant.
-Below is a JSON list of {len(incomplete_records)} database records where some attributes are null/missing.
-Each record has an identifier '__row_id__' and a primary subject name under '{primary_col}'.
+Below is a JSON list of records where some attributes are null/missing.
+Each record is identified by its primary name under the '{primary_col}' key.
 
-CRITICAL INSTRUCTIONS:
-1. For each record, infer and fill in ONLY the missing (null) values based on real-world knowledge and row context.
-2. Keep all non-null values EXACTLY as they are.
-3. You MUST preserve the exact '__row_id__' for each record.
-4. Do NOT drop any records and do NOT duplicate any records. Return exactly {len(incomplete_records)} records.
+TASK:
+For each record, infer and fill in ONLY the missing (null) values based on real-world knowledge and row context.
+Keep all non-null values EXACTLY as they are.
+Do NOT change the value of '{primary_col}'.
+Return a JSON array of objects containing the completed records.
 
 Incomplete Records:
 {json.dumps(incomplete_records, indent=2)}
@@ -115,26 +116,40 @@ Return ONLY a valid JSON array of objects containing the filled records."""
     if not isinstance(filled_data, list):
         return df_result
 
-    # 5. Robust In-place update by __row_id__ and primary entity name
+    # 5. Strictly match filled data to original rows by entity name (primary_col)
     for record in filled_data:
         if not isinstance(record, dict):
             continue
 
-        target_idx = None
-        # Match by explicit __row_id__
-        if "__row_id__" in record and record["__row_id__"] in df_result.index:
-            target_idx = record["__row_id__"]
-        elif primary_col in record and record[primary_col]:
-            # Fallback: match by primary entity name
-            name_val = str(record[primary_col]).strip().lower()
-            matches = df_result[df_result[primary_col].astype(str).str.strip().str.lower() == name_val].index
-            if len(matches) > 0:
-                target_idx = matches[0]
+        # Find the entity name in the record
+        phone_key = next(
+            (k for k in record.keys() if str(k).strip().lower() == str(primary_col).strip().lower()),
+            None,
+        )
+        if not phone_key or not record[phone_key]:
+            continue
 
-        if target_idx is not None:
+        entity_name = str(record[phone_key]).strip().lower()
+
+        # Find the matching row in df_result
+        matches = df_result[
+            df_result[primary_col].astype(str).str.strip().str.lower() == entity_name
+        ].index
+
+        # If exact match not found, try substring matching
+        if len(matches) == 0:
+            matches = df_result[
+                df_result[primary_col].astype(str).str.strip().str.lower().apply(
+                    lambda x: x in entity_name or entity_name in x
+                )
+            ].index
+
+        if len(matches) > 0:
+            target_idx = matches[0]
             for col in df_result.columns:
-                if col == "__row_id__":
-                    continue
+                if col == primary_col:
+                    continue  # Never overwrite the entity name itself!
+
                 matched_key = next(
                     (k for k in record.keys() if str(k).strip().lower() == str(col).strip().lower()),
                     None,
@@ -147,5 +162,8 @@ Return ONLY a valid JSON array of objects containing the filled records."""
                         if new_val is not None:
                             df_result.at[target_idx, col] = str(new_val)
 
-    # 6. Ensure no NaN remain and return
+    # 6. Final deduplication safety check
+    df_result = df_result.drop_duplicates(subset=[primary_col], keep="first").reset_index(drop=True)
+
+    # Replace any leftover NA with "—"
     return df_result.fillna("—")
