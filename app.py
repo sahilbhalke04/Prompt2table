@@ -1,8 +1,8 @@
 """
-app.py  —  Text-to-Dataset Converter  (Streamlit UI)
-─────────────────────────────────────────────────────
-Person A: Core UI shell — sidebar, text input area, mode toggle.
-Person B: Custom column input, results table, download buttons.
+app.py  —  Text-to-Dataset Converter  (Merged Final Version)
+──────────────────────────────────────────────────────────────
+Combines Person A (Auto-Detection, Core UI) and Person B (Custom Columns,
+Export, Enrichment) into a single unified Streamlit application.
 
 Run:  streamlit run app.py
 """
@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import time
 import traceback
-from pathlib import Path
 
 import streamlit as st
 import pandas as pd
@@ -21,21 +20,11 @@ import os
 # Load .env file if present
 load_dotenv()
 
-# ── Person A imports ──────────────────────────────────────────────────────────
+# ── Module Imports ────────────────────────────────────────────────────────────
 from auto_extractor import extract_auto_dataset
-
-# ── Person B imports (graceful fallback if not yet implemented) ────────────────
-try:
-    from custom_extractor import extract_custom_dataset
-    _CUSTOM_AVAILABLE = True
-except (ImportError, Exception):
-    _CUSTOM_AVAILABLE = False
-
-try:
-    from exporter import convert_to_csv, convert_to_json
-    _EXPORTER_AVAILABLE = True
-except (ImportError, Exception):
-    _EXPORTER_AVAILABLE = False
+from custom_extractor import extract_custom_dataset
+from exporter import json_to_dataframe, convert_to_csv, convert_to_json
+from enricher import fill_missing_values
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -255,14 +244,14 @@ st.markdown(
 # Session State Initialisation
 # ─────────────────────────────────────────────────────────────────────────────
 
-if "extraction_df" not in st.session_state:
-    st.session_state.extraction_df = None
+if "master_df" not in st.session_state:
+    st.session_state.master_df = pd.DataFrame()
 if "run_count" not in st.session_state:
     st.session_state.run_count = 0
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# SIDEBAR — Person A's UI (Provider, Model, API Key)
+# SIDEBAR — Configuration
 # ═════════════════════════════════════════════════════════════════════════════
 
 with st.sidebar:
@@ -286,10 +275,10 @@ with st.sidebar:
         model_options = ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"]
     else:
         model_options = [
-            "gemini-3.6-flash",       # ✅ Active default model
-            "gemini-flash-latest",    # ✅ Active alias
-            "gemini-3.5-flash",       # ✅ Active model
-            "gemini-pro-latest",      # ✅ Active high-quality model
+            "gemini-3.6-flash",
+            "gemini-flash-latest",
+            "gemini-3.5-flash",
+            "gemini-pro-latest",
         ]
 
     selected_model = st.selectbox(
@@ -323,14 +312,16 @@ with st.sidebar:
     )
     st.caption("🔑 [Get OpenAI Key](https://platform.openai.com/api-keys)")
 
-    # ── Integration Status ───────────────────────────────────────────────
-    st.markdown("---")
-    st.markdown("**Module Status**")
-    st.markdown(
-        f"- Auto-Detect: ✅ Ready\n"
-        f"- Custom Columns: {'✅ Ready' if _CUSTOM_AVAILABLE else '⏳ Pending (Person B)'}\n"
-        f"- Exporter: {'✅ Ready' if _EXPORTER_AVAILABLE else '⏳ Pending (Person B)'}"
-    )
+    # ── Dataset Summary (from Person B) ──────────────────────────────────
+    if not st.session_state.master_df.empty:
+        st.markdown("---")
+        st.markdown("**📊 Dataset Summary**")
+        st.write(f"**Total Records:** {len(st.session_state.master_df)}")
+        st.write(f"**Total Columns:** {len(st.session_state.master_df.columns)}")
+
+        if st.button("🗑️ Reset Dataset", use_container_width=True):
+            st.session_state.master_df = pd.DataFrame()
+            st.rerun()
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -349,7 +340,7 @@ st.markdown(
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# MAIN AREA — Person A: Text Input & Mode Toggle
+# MAIN AREA — Text Input & Mode Toggle
 # ═════════════════════════════════════════════════════════════════════════════
 
 st.markdown(
@@ -377,7 +368,7 @@ if raw_text:
     st.caption(f"📊 {char_count:,} characters · {word_count:,} words")
 
 
-# ── Extraction Mode Toggle (Person A's UI) ────────────────────────────────
+# ── Extraction Mode Toggle ────────────────────────────────────────────────
 
 st.markdown("---")
 
@@ -393,8 +384,9 @@ mode = st.radio(
     ),
 )
 
+
 # ═════════════════════════════════════════════════════════════════════════════
-# Person B's UI Slot — Custom Column Input
+# Custom Column Input (shown when Custom mode selected)
 # ═════════════════════════════════════════════════════════════════════════════
 
 user_cols = ""
@@ -406,22 +398,12 @@ if "Custom" in mode:
         unsafe_allow_html=True,
     )
 
-    # ── Person B: Replace or enhance this input field ─────────────────────
     user_cols = st.text_input(
         "Enter column names (comma-separated)",
         placeholder="e.g.  Name, Price, Top Speed, 0-60 Time",
         key="custom_cols_input",
         help="Type the exact column names you want in the output table.",
     )
-
-    if not _CUSTOM_AVAILABLE:
-        st.markdown(
-            '<div class="warning-box">'
-            "⏳ <strong>Custom Columns module not yet implemented.</strong> "
-            "Person B: implement <code>custom_extractor.py</code> to enable this mode."
-            "</div>",
-            unsafe_allow_html=True,
-        )
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -457,15 +439,6 @@ if convert_clicked:
         )
         st.stop()
 
-    # Check custom mode availability
-    if "Custom" in mode and not _CUSTOM_AVAILABLE:
-        st.markdown(
-            '<div class="error-box">❌ Custom Columns mode is not yet available. '
-            "Person B needs to implement <code>custom_extractor.py</code>.</div>",
-            unsafe_allow_html=True,
-        )
-        st.stop()
-
     if "Custom" in mode and not user_cols.strip():
         st.markdown(
             '<div class="warning-box">⚠️ Please enter column names for Custom mode.</div>',
@@ -481,22 +454,22 @@ if convert_clicked:
         t_start = time.time()
 
         if "Auto" in mode:
-            # ── Person A's Backend ────────────────────────────────────────
+            # ── Auto-Detect Backend ──────────────────────────────────────
             status.info("🤖 Analysing text and auto-detecting schema...")
             progress_bar.progress(30, text="Calling LLM...")
 
-            df = extract_auto_dataset(
+            new_df = extract_auto_dataset(
                 raw_text=raw_text,
                 api_key=api_key,
                 provider=provider,
                 model=selected_model,
             )
         else:
-            # ── Person B's Backend ────────────────────────────────────────
+            # ── Custom Columns Backend ───────────────────────────────────
             status.info("✏️ Extracting with custom columns...")
             progress_bar.progress(30, text="Calling LLM...")
 
-            df = extract_custom_dataset(
+            items = extract_custom_dataset(
                 raw_text=raw_text,
                 columns=user_cols,
                 api_key=api_key,
@@ -504,20 +477,35 @@ if convert_clicked:
                 model=selected_model,
             )
 
+            # Convert list[dict] to DataFrame using Person B's exporter
+            expected_cols = [c.strip() for c in user_cols.split(",") if c.strip()]
+            if isinstance(items, pd.DataFrame):
+                new_df = items
+            else:
+                new_df = json_to_dataframe(items, expected_columns=expected_cols)
+
         elapsed = time.time() - t_start
         progress_bar.progress(100, text="Done!")
         status.empty()
 
-        # ── Store results in session state ────────────────────────────────
-        st.session_state.extraction_df = df
-        st.session_state.run_count += 1
+        # ── Append to master dataset ──────────────────────────────────────
+        if new_df is not None and not new_df.empty:
+            if st.session_state.master_df.empty:
+                st.session_state.master_df = new_df
+            else:
+                st.session_state.master_df = pd.concat(
+                    [st.session_state.master_df, new_df],
+                    ignore_index=True,
+                ).fillna("—")
 
-        if df is not None and not df.empty:
+            st.session_state.run_count += 1
+
             st.markdown(
                 f'<div class="success-box">'
-                f"✅ Extracted <strong>{len(df)}</strong> records "
-                f"with <strong>{len(df.columns)}</strong> columns "
-                f"in <strong>{elapsed:.1f}s</strong>."
+                f"✅ Extracted <strong>{len(new_df)}</strong> records "
+                f"with <strong>{len(new_df.columns)}</strong> columns "
+                f"in <strong>{elapsed:.1f}s</strong>. "
+                f"Master dataset now has <strong>{len(st.session_state.master_df)}</strong> total records."
                 f"</div>",
                 unsafe_allow_html=True,
             )
@@ -529,14 +517,6 @@ if convert_clicked:
                 "</div>",
                 unsafe_allow_html=True,
             )
-
-    except NotImplementedError as exc:
-        progress_bar.empty()
-        status.empty()
-        st.markdown(
-            f'<div class="error-box">🔧 <strong>Not Implemented:</strong> {exc}</div>',
-            unsafe_allow_html=True,
-        )
 
     except Exception as exc:
         progress_bar.empty()
@@ -587,82 +567,89 @@ if convert_clicked:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# RESULTS SECTION
+# RESULTS SECTION — Master Dataset Display
 # ═════════════════════════════════════════════════════════════════════════════
-# Person B will enhance this section with styled st.dataframe, download
-# buttons for CSV/JSON, and data preview.  The basic display below ensures
-# the app is testable before Person B's code is integrated.
 
-df = st.session_state.extraction_df
+master_df = st.session_state.master_df
 
-if df is not None and not df.empty:
+if not master_df.empty:
     st.markdown("---")
     st.markdown(
-        '<div class="ui-card"><h3>📊 Extracted Dataset</h3></div>',
+        '<div class="ui-card"><h3>📊 Master Dataset</h3></div>',
         unsafe_allow_html=True,
     )
 
     # ── Summary metrics ───────────────────────────────────────────────────
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Records", len(df))
+        st.metric("Records", len(master_df))
     with col2:
-        st.metric("Columns", len(df.columns))
+        st.metric("Columns", len(master_df.columns))
     with col3:
-        null_pct = (df.isnull().sum().sum() / (len(df) * len(df.columns))) * 100
-        st.metric("Completeness", f"{100 - null_pct:.0f}%")
+        # Count both NaN and "—" placeholders as missing
+        missing_count = (master_df.isnull() | (master_df == "—")).sum().sum()
+        total_cells = len(master_df) * len(master_df.columns)
+        completeness = ((total_cells - missing_count) / total_cells) * 100 if total_cells > 0 else 100
+        st.metric("Completeness", f"{completeness:.0f}%")
 
     # ── Data preview ──────────────────────────────────────────────────────
-    st.dataframe(df, use_container_width=True, height=400)
+    st.dataframe(master_df, use_container_width=True, height=400)
 
-    # ── Download buttons (basic fallback — Person B will replace) ─────────
+    # ── Auto-Fill Missing Values (Person B's enricher) ────────────────────
+    has_missing = (master_df == "—").any().any() or master_df.isnull().any().any()
+
+    if has_missing:
+        st.markdown(
+            '<div class="warning-box">'
+            "⚠️ Some records contain missing field values. "
+            "Use the button below to auto-fill them with AI."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        api_key_for_fill = gemini_key if provider == "gemini" else openai_key
+        if st.button("✨ Auto-Fill Missing Values with AI", use_container_width=True):
+            if not api_key_for_fill or not api_key_for_fill.strip():
+                st.error("⚠️ Please enter your API key in the sidebar to run auto-fill.")
+            else:
+                with st.spinner("AI is analyzing context to populate missing cells..."):
+                    try:
+                        updated_df = fill_missing_values(master_df, api_key_for_fill)
+                        st.session_state.master_df = updated_df
+                        st.success("🎉 Missing values successfully backfilled!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Auto-fill failed: {str(e)}")
+
+    # ── Export Buttons ────────────────────────────────────────────────────
     st.markdown("")
+    st.markdown(
+        '<div class="ui-card"><h3>📥 Export Dataset</h3></div>',
+        unsafe_allow_html=True,
+    )
     dl_col1, dl_col2 = st.columns(2)
-
-    if _EXPORTER_AVAILABLE:
-        # Person B's export functions are available
-        with dl_col1:
-            csv_data = convert_to_csv(df)
-            st.download_button(
-                "📥 Download CSV",
-                data=csv_data,
-                file_name="dataset.csv",
-                mime="text/csv",
-                use_container_width=True,
-            )
-        with dl_col2:
-            json_data = convert_to_json(df)
-            st.download_button(
-                "📥 Download JSON",
-                data=json_data,
-                file_name="dataset.json",
-                mime="application/json",
-                use_container_width=True,
-            )
-    else:
-        # Basic fallback until Person B implements exporter.py
-        with dl_col1:
-            csv_bytes = df.to_csv(index=False).encode("utf-8")
-            st.download_button(
-                "📥 Download CSV",
-                data=csv_bytes,
-                file_name="dataset.csv",
-                mime="text/csv",
-                use_container_width=True,
-            )
-        with dl_col2:
-            json_str = df.to_json(orient="records", indent=2)
-            st.download_button(
-                "📥 Download JSON",
-                data=json_str,
-                file_name="dataset.json",
-                mime="application/json",
-                use_container_width=True,
-            )
+    with dl_col1:
+        csv_data = convert_to_csv(master_df)
+        st.download_button(
+            "📥 Download CSV",
+            data=csv_data,
+            file_name="dataset.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+    with dl_col2:
+        json_data = convert_to_json(master_df)
+        st.download_button(
+            "📥 Download JSON",
+            data=json_data,
+            file_name="dataset.json",
+            mime="application/json",
+            use_container_width=True,
+        )
 
     # ── Raw JSON preview (collapsible) ────────────────────────────────────
     with st.expander("🔍 Raw JSON Preview"):
-        st.json(df.to_dict(orient="records"))
+        st.json(master_df.replace("—", None).to_dict(orient="records"))
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -674,7 +661,6 @@ st.markdown(
     <div class="app-footer">
         🧬 Text-to-Dataset Converter &nbsp;|&nbsp;
         Powered by Gemini · OpenAI · Streamlit · Pandas
-        &nbsp;|&nbsp; Person A + Person B Collab
     </div>
     """,
     unsafe_allow_html=True,
