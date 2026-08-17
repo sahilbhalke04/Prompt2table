@@ -112,4 +112,5 @@ streamlit run app.py
 
 👥 Contributors
 Sahil Bhalke — Core Architecture, Schema Inference Engine & UI Integration
+
 Manasi Ghadge — Custom Column Logic, Data Sanitization & Export Utilities
