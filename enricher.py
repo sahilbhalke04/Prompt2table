@@ -11,9 +11,22 @@ from __future__ import annotations
 import json
 import re
 from typing import Any, Dict, List, Optional
+import numpy as np
 import pandas as pd
 from google import genai
 from google.genai import types
+
+
+class _NpEncoder(json.JSONEncoder):
+    """Handle numpy int64/float64 that standard json.dumps can't serialize."""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 
 
 def fill_missing_values(df: pd.DataFrame, api_key: str) -> pd.DataFrame:
@@ -75,7 +88,7 @@ Preserve '__row_index__' and '__entity_name__'.
 Return a JSON array of objects containing the completed records.
 
 Incomplete Records:
-{json.dumps(incomplete_records, indent=2)}
+{json.dumps(incomplete_records, indent=2, cls=_NpEncoder)}
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON array of objects containing the filled records."""
