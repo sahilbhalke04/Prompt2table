@@ -16,18 +16,21 @@ Turn messy unstructured text, bullet points, or raw notes into clean, structured
 
 ## Quick Start
 
-### 1. Clone & Set Up
 ```bash
+# 1. Clone the repository
 git clone [https://github.com/sahilbhalke04/text-to-dataset-converter.git](https://github.com/sahilbhalke04/text-to-dataset-converter.git)
 cd text-to-dataset-converter
-```
 
-### 2. Create virtual environment
+# 2. Set up virtual environment
 python -m venv .venv
 .venv\Scripts\activate      # On Windows
- source .venv/bin/activate # On Mac/Linux
+# source .venv/bin/activate # On Mac/Linux
 
+# 3. Install dependencies
 pip install -r requirements.txt
+
+# 4. Run the app
+streamlit run app.py
 ```
 text_to_dataset/
 ├── auto_extractor.py      # Auto-detects columns from unstructured text
@@ -35,9 +38,9 @@ text_to_dataset/
 ├── exporter.py            # Data cleaning, null handling, & file downloads
 ├── app.py                 # Streamlit UI
 └── requirements.txt
-```
 
 Contributors:
+
 Sahil Bhalke — Architecture, Auto Extraction & UI
 
 Manasi Ghadge — Custom Extraction, Data Cleaning & Exporter
