@@ -28,13 +28,16 @@ python -m venv .venv
 # source .venv/bin/activate # On Mac/Linux
 
 pip install -r requirements.txt
-
-### 2. Run the AppBashstreamlit run app.py
-Project StructurePlaintexttext_to_dataset/
+```
+text_to_dataset/
 ├── auto_extractor.py      # Auto-detects columns from unstructured text
 ├── custom_extractor.py    # Extracts user-defined columns
 ├── exporter.py            # Data cleaning, null handling, & file downloads
 ├── app.py                 # Streamlit UI
 └── requirements.txt
+```
 
-Contributors:Sahil Bhalke — Architecture, Auto Extraction & UIManasi Ghadge — Custom Extraction, Data Cleaning & Exporter
+Contributors:
+Sahil Bhalke — Architecture, Auto Extraction & UI
+
+Manasi Ghadge — Custom Extraction, Data Cleaning & Exporter
