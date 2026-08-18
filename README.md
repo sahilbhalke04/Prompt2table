@@ -22,10 +22,10 @@ git clone [https://github.com/sahilbhalke04/text-to-dataset-converter.git](https
 cd text-to-dataset-converter
 ```
 
-# Create virtual environment
+### 2. Create virtual environment
 python -m venv .venv
 .venv\Scripts\activate      # On Windows
-# source .venv/bin/activate # On Mac/Linux
+ source .venv/bin/activate # On Mac/Linux
 
 pip install -r requirements.txt
 ```
