@@ -32,12 +32,15 @@ pip install -r requirements.txt
 # 4. Run the app
 streamlit run app.py
 ```
+
+```
 text_to_dataset/
 ├── auto_extractor.py      # Auto-detects columns from unstructured text
 ├── custom_extractor.py    # Extracts user-defined columns
 ├── exporter.py            # Data cleaning, null handling, & file downloads
 ├── app.py                 # Streamlit UI
 └── requirements.txt
+```
 
 Contributors:
 
