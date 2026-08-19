@@ -1,4 +1,4 @@
-# Text-to-Dataset Converter
+# Prompt2Table
 
 Turn messy unstructured text, bullet points, or raw notes into clean, structured tables (CSV / JSON) using LLMs.
 
@@ -18,8 +18,8 @@ Turn messy unstructured text, bullet points, or raw notes into clean, structured
 
 ```bash
 # 1. Clone the repository
-git clone [https://github.com/sahilbhalke04/text-to-dataset-converter.git](https://github.com/sahilbhalke04/text-to-dataset-converter.git)
-cd text-to-dataset-converter
+git clone [https://github.com/sahilbhalke04/Prompt2Table.git](https://github.com/sahilbhalke04/Prompt2Table.git)
+cd Prompt2Table
 
 # 2. Set up virtual environment
 python -m venv .venv
@@ -32,18 +32,16 @@ pip install -r requirements.txt
 # 4. Run the app
 streamlit run app.py
 ```
-
+Project Structure
 ```
-text_to_dataset/
+Prompt2Table/
 ├── auto_extractor.py      # Auto-detects columns from unstructured text
 ├── custom_extractor.py    # Extracts user-defined columns
 ├── exporter.py            # Data cleaning, null handling, & file downloads
 ├── app.py                 # Streamlit UI
 └── requirements.txt
 ```
-
 Contributors:
-
 Sahil Bhalke — Architecture, Auto Extraction & UI
 
 Manasi Ghadge — Custom Extraction, Data Cleaning & Exporter
