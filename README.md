@@ -10,7 +10,7 @@ Turn messy unstructured text, bullet points, or raw notes into clean, structured
 Configure your preferred AI provider (Google Gemini or OpenAI), select models dynamically, and manage your API keys securely via the sidebar menu.
 
 <div align="center">
-  <img src="docs/screenshots/01-dashboard-config.png" alt="Sidebar Configuration" width="850"/>
+  <img src="docs/screenshots/01-dashboard-config.png" alt="Sidebar Configuration" width="500"/>
 </div>
 
 ---
