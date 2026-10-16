@@ -26,7 +26,7 @@ def extract_custom_dataset(
     columns: Optional[str] = None,
     api_key: str = "",
     provider: str = "gemini",
-    model: str = "gemini-2.0-flash",
+    model: str = "gemini-flash-lite-latest",
     user_columns_str: Optional[str] = None,
 ) -> pd.DataFrame:
     """
@@ -114,8 +114,9 @@ def _call_gemini(prompt: str, api_key: str, model: str, schema: Any) -> str:
         )
 
     candidates = _build_model_candidates(model, [
+        "gemini-flash-lite-latest",
+        "gemini-3.5-flash-lite",
         "gemini-3.6-flash",
-        "gemini-flash-latest",
         "gemini-3.5-flash",
         "gemini-pro-latest",
     ])

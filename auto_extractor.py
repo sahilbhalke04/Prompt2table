@@ -68,7 +68,7 @@ def extract_auto_dataset(
     raw_text: str,
     api_key: str,
     provider: str = "gemini",
-    model: str = "gemini-3.6-flash",
+    model: str = "gemini-flash-lite-latest",
 ) -> pd.DataFrame:
     """
     Auto-detect schema from raw text and extract structured records.
@@ -142,11 +142,11 @@ def _call_gemini(prompt: str, api_key: str, model: str) -> str:
         )
 
     candidates = _build_model_candidates(model, [
+        "gemini-flash-lite-latest",
+        "gemini-3.5-flash-lite",
         "gemini-3.6-flash",
-        "gemini-flash-latest",
         "gemini-3.5-flash",
         "gemini-pro-latest",
-        "gemini-2.5-flash",
     ])
 
     last_error: Optional[Exception] = None

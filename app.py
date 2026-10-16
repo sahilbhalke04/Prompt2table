@@ -273,12 +273,12 @@ with st.sidebar:
     st.markdown("**2. Model**")
     if provider == "openai":
         model_options = ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"]
-    else:
         model_options = [
-            "gemini-3.6-flash",
-            "gemini-flash-latest",
+            "gemini-flash-lite-latest",  # ⚡ Fast & High Quota (Recommended)
+            "gemini-3.5-flash-lite",    # ⚡ Fast & High Quota
+            "gemini-3.6-flash",          # High Quality
             "gemini-3.5-flash",
-            "gemini-pro-latest",
+            "gemini-pro-latest",         # Deep Reasoning (slower)
         ]
 
     selected_model = st.selectbox(
@@ -588,6 +588,16 @@ if not master_df.empty:
         unsafe_allow_html=True,
     )
 
+    if "fill_message" in st.session_state:
+        msg = st.session_state.pop("fill_message")
+        status = st.session_state.pop("fill_status", "success")
+        if status == "success":
+            st.success(msg)
+        elif status == "warning":
+            st.warning(msg)
+        else:
+            st.info(msg)
+
     # ── Summary metrics ───────────────────────────────────────────────────
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -596,7 +606,7 @@ if not master_df.empty:
         st.metric("Columns", len(master_df.columns))
     with col3:
         # Count both NaN and "—" placeholders as missing
-        missing_count = (master_df.isnull() | (master_df == "—")).sum().sum()
+        missing_count = (master_df.isnull() | (master_df == "—") | (master_df == "")).sum().sum()
         total_cells = len(master_df) * len(master_df.columns)
         completeness = ((total_cells - missing_count) / total_cells) * 100 if total_cells > 0 else 100
         st.metric("Completeness", f"{completeness:.0f}%")
@@ -605,7 +615,7 @@ if not master_df.empty:
     st.dataframe(master_df, use_container_width=True, height=400)
 
     # ── Auto-Fill Missing Values (Person B's enricher) ────────────────────
-    has_missing = (master_df == "—").any().any() or master_df.isnull().any().any()
+    has_missing = (master_df == "—").any().any() or (master_df == "").any().any() or master_df.isnull().any().any()
 
     if has_missing:
         st.markdown(
@@ -623,9 +633,20 @@ if not master_df.empty:
             else:
                 with st.spinner("AI is analyzing context to populate missing cells..."):
                     try:
-                        updated_df = fill_missing_values(master_df, api_key_for_fill)
+                        updated_df, filled_count = fill_missing_values(
+                            master_df,
+                            api_key=api_key_for_fill,
+                            provider=provider,
+                            model=selected_model,
+                            return_count=True,
+                        )
                         st.session_state.master_df = updated_df
-                        st.success("🎉 Missing values successfully backfilled!")
+                        if filled_count > 0:
+                            st.session_state["fill_message"] = f"🎉 Successfully backfilled {filled_count} missing cell(s)!"
+                            st.session_state["fill_status"] = "success"
+                        else:
+                            st.session_state["fill_message"] = "ℹ️ AI reviewed the records, but could not determine values for the remaining missing fields."
+                            st.session_state["fill_status"] = "warning"
                         st.rerun()
                     except Exception as e:
                         st.error(f"❌ Auto-fill failed: {str(e)}")
