@@ -273,6 +273,7 @@ with st.sidebar:
     st.markdown("**2. Model**")
     if provider == "openai":
         model_options = ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"]
+    else:
         model_options = [
             "gemini-flash-lite-latest",  # ⚡ Fast & High Quota (Recommended)
             "gemini-3.5-flash-lite",    # ⚡ Fast & High Quota
